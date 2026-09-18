@@ -8,7 +8,7 @@
       "name": "react-native-boilerplate-architect",
       "source": "./plugins/react-native-boilerplate-architect",
       "description": "Scaffolds and enforces PT PSM's production-grade React Native (Expo) boilerplate and team anti-conflict tooling.",
-      "version": "1.0.0"
+      "version": "1.1.0"
     }
   ]
 }

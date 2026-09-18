@@ -151,6 +151,13 @@ Adjust the exact `expo`/`react-native` aligned versions with
 plain `npm install`, so versions stay compatible with the installed Expo
 SDK.
 
+For anything beyond this core list — bottom sheet, toast, date picker,
+charts, secure storage, analytics, etc. — check
+`reference/LIBRARIES.md` first instead of picking whatever comes up in a
+search. It's the standard pick per common need, kept consistent across
+PT PSM apps. Install those on demand when a feature actually needs them,
+not speculatively at scaffold time.
+
 ### 6. TypeScript strict mode + path aliases
 
 Ensure `tsconfig.json` extends `expo/tsconfig.base` with `"strict": true`
@@ -269,6 +276,10 @@ not already decided:
 
 - `reference/STANDARD.md` — the full standard with rationale (read before
   auditing an existing project or explaining *why* a rule exists)
+- `reference/LIBRARIES.md` — catalog of standard library picks for common
+  needs beyond the core stack (bottom sheet, toast, charts, secure
+  storage, auth, analytics, testing...) — check before recommending or
+  installing a library not already in the core stack
 - `templates/` — copy-ready config/template files referenced above,
   including `templates/app/` (route-group navigation skeleton) and
   `templates/src/features/example/` (feature-based folder worked example)

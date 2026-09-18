@@ -68,3 +68,21 @@ Kalau app sudah besar, kelompokkan per fitur: `/src/features/<feature>/{componen
 - CI (GitHub Actions) menjalankan typecheck + lint di setiap PR — ini backstop yang tidak bisa di-skip developer individual (beda dengan git hook lokal).
 
 Lihat `CONTRIBUTING.md` untuk detail lengkap alur kontribusi.
+
+## 8. Library Pendukung (Bottom Sheet, Toast, dll.)
+Untuk kebutuhan umum di luar stack inti (bottom sheet, toast/snackbar, action sheet, date picker, chart, secure storage, dll.), jangan asal pilih library dari hasil pencarian — cek daftar pilihan standar berikut supaya konsisten antar aplikasi PT PSM:
+
+- **Bottom sheet:** `@gorhom/bottom-sheet` (atau `@expo/ui` untuk versi native SwiftUI/Jetpack Compose)
+- **Modal/Dialog custom:** `Modal` bawaan RN atau `react-native-modal` — pengganti `alert()` yang dilarang
+- **Toast/Snackbar:** `react-native-toast-message`
+- **Action sheet:** `@expo/react-native-action-sheet`
+- **Skeleton loader:** `moti/skeleton` atau `react-native-skeleton-placeholder`
+- **Image:** `expo-image` (bukan `Image` bawaan RN)
+- **Animasi deklaratif ringan:** `moti` (di atas Reanimated)
+- **Date/time picker:** `@react-native-community/datetimepicker`
+- **Chart:** `react-native-gifted-charts`
+- **Storage sensitif (token/auth):** `expo-secure-store` — **jangan** simpan token di AsyncStorage
+- **Network status:** `@react-native-community/netinfo`
+- **Haptic feedback:** `expo-haptics`
+
+Instal hanya saat benar-benar dibutuhkan fitur, bukan speculative di awal project. Daftar lengkap + rasional tiap pilihan ada di `reference/LIBRARIES.md` pada skill `react-native-boilerplate-architect`.
