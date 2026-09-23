@@ -6,13 +6,19 @@ export interface ButtonProps {
   onPress: () => void;
   isLoading?: boolean;
   disabled?: boolean;
+  /** Overrides the screen-reader label if it should differ from the visible `label` text. */
+  accessibilityLabel?: string;
 }
 
 /**
  * Base design-system button. Handles its own loading/disabled visual state
- * so screens don't re-implement it per usage.
+ * so screens don't re-implement it per usage. Carries the baseline
+ * accessibility props from STANDARD.md §9 (accessibilityRole/state, a
+ * hitSlop safety margin toward the 44x44 minimum touch target) — keep new
+ * `ui/` components consistent with this rather than adding it as an
+ * afterthought.
  */
-export const Button = ({ label, onPress, isLoading = false, disabled = false }: ButtonProps) => {
+export const Button = ({ label, onPress, isLoading = false, disabled = false, accessibilityLabel }: ButtonProps) => {
   const handlePress = useCallback(() => {
     if (isLoading || disabled) return;
     onPress();
@@ -22,6 +28,10 @@ export const Button = ({ label, onPress, isLoading = false, disabled = false }: 
     <Pressable
       onPress={handlePress}
       disabled={disabled || isLoading}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel ?? label}
+      accessibilityState={{ disabled: disabled || isLoading, busy: isLoading }}
+      hitSlop={8}
       style={({ pressed }) => [styles.button, (disabled || isLoading) && styles.disabled, pressed && styles.pressed]}
     >
       {isLoading ? <ActivityIndicator color="#fff" /> : <Text style={styles.label}>{label}</Text>}

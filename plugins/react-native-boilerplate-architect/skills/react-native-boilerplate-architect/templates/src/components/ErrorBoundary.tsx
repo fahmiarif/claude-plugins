@@ -5,6 +5,16 @@ import { Button } from '@/components/ui/Button';
 
 interface ErrorBoundaryProps {
   children: ReactNode;
+  /**
+   * Optional crash reporter hook — called once per caught render error,
+   * before the fallback UI renders. Left undefined by default so this
+   * component has no hard dependency on Sentry/Crashlytics/etc (pick one
+   * per reference/LIBRARIES.md's "Crash reporting" row, don't run both).
+   * Wire it once a crash reporter is installed, e.g.
+   * `onError={(error, info) => Sentry.captureException(error, { extra: info })}`
+   * — see SKILL.md's "Optional patterns" → "Crash reporting hook".
+   */
+  onError?: (error: Error, info: React.ErrorInfo) => void;
 }
 
 interface ErrorBoundaryState {
@@ -13,10 +23,7 @@ interface ErrorBoundaryState {
 
 /**
  * Wraps the app (see app/_layout.tsx) so a render error anywhere in the
- * tree shows a recoverable screen instead of a blank/crashed app. Report
- * `error` to Sentry/Crashlytics in `componentDidCatch` once one is wired
- * up — left as a plain console.error here so the boilerplate has no hard
- * dependency on a specific crash reporter.
+ * tree shows a recoverable screen instead of a blank/crashed app.
  */
 export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   state: ErrorBoundaryState = { error: null };
@@ -27,6 +34,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
     console.error('ErrorBoundary caught an error', error, info);
+    this.props.onError?.(error, info);
   }
 
   handleReset = () => {

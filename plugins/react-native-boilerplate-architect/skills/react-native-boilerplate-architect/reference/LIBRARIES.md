@@ -5,12 +5,14 @@ every PT PSM app makes the same choice for the same problem instead of
 each developer/agent picking whatever shows up first in a search. These
 are **supplementary** to the mandatory core stack in `STANDARD.md`
 (routing, TS, TanStack Query, Zustand, RHF+Zod, FlashList, Reanimated,
-AsyncStorage) — install on demand when a feature actually needs one, not
-speculatively at scaffold time. AsyncStorage is the one exception already
-installed at scaffold time (see `SKILL.md` step 5) because the persisted
-`hasSeenOnboarding` flag in `templates/src/store/useAppPreferencesStore.ts`
-depends on it out of the box — it's still listed below under "Storage,
-network, device" for completeness, not because it's optional.
+AsyncStorage, NetInfo, SecureStore) — install on demand when a feature
+actually needs one, not speculatively at scaffold time. AsyncStorage,
+NetInfo, and SecureStore are the three exceptions already installed at
+scaffold time (see `SKILL.md` step 5) because the persisted
+`hasSeenOnboarding`/session flags, the global offline banner, and the auth
+token respectively depend on them out of the box — they're still listed
+below under "Storage, network, device" for completeness, not because
+they're optional.
 
 When a need isn't listed here, prefer (in order): an Expo SDK module
 (`expo-*`, actively maintained, guaranteed compatible with the installed
@@ -65,11 +67,11 @@ Expo-managed native module, or `npm install` otherwise.
 | Need | Standard pick | Notes |
 |---|---|---|
 | Non-sensitive local storage | `@react-native-async-storage/async-storage` | Client-only cache/preferences (pairs with Zustand's `persist` middleware if a store needs to survive restarts). |
-| **Sensitive** storage (auth tokens, credentials) | `expo-secure-store` | Never put tokens in AsyncStorage (plaintext) — this is the one library substitution that's a security requirement, not a style preference. |
-| Network/connectivity status | `@react-native-community/netinfo` | Needed for the "handle the error path gracefully" rule when a request fails due to being offline specifically. |
+| **Sensitive** storage (auth tokens, credentials) | `expo-secure-store` | **Promoted to core** (see `SKILL.md` step 5/7) — `templates/src/store/useAuthStore.ts` is wired to it by default, not left as a "swap AsyncStorage for this once it matters" suggestion. Never put tokens in plain AsyncStorage. |
+| Network/connectivity status | `@react-native-community/netinfo` | **Promoted to core** (see `SKILL.md` step 5/7) — every scaffolded app gets `useNetworkStatus` + a global `OfflineBanner` by default, so a failed request can be told apart from "we're offline" rather than looking like a generic error. |
 | Haptic feedback | `expo-haptics` | Light haptic on meaningful taps (not every button — reserve for confirmations/important actions). |
 | Biometric auth | `expo-local-authentication` | Face ID / fingerprint gate, e.g. before revealing sensitive data. |
-| Deep linking | `expo-linking` | |
+| Deep linking | `expo-linking` | See `templates/src/hooks/useDeepLinkRoute.ts` for the URL-to-route normalization pattern, and `SKILL.md`'s "iOS + Android" section for the `intentFilters`/`associatedDomains` native config. |
 | Sharing (native share sheet) | `expo-sharing` | |
 | Maps | `react-native-maps` | |
 | WebView | `react-native-webview` | |
@@ -81,10 +83,22 @@ Expo-managed native module, or `npm install` otherwise.
 | Google Sign-In | `@react-native-google-signin/google-signin` | |
 | Apple Sign-In | `expo-apple-authentication` | Required by App Store guidelines if Google/Facebook sign-in is offered on iOS. |
 | In-app purchases / subscriptions | `react-native-iap` | |
-| Push notifications (basic) | `expo-notifications` | |
+| Push notifications (basic) | `expo-notifications` | See `templates/src/hooks/usePushNotifications.ts` + `templates/src/services/api/pushNotifications.ts` for the permission + token-registration + tap/foreground-listener pattern once this is installed — a reference to adapt, not a drop-in (the backend endpoint shape is app-specific). |
 | Push notifications (advanced local scheduling, richer Android controls) | `@notifee/react-native` | Reach for this on top of `expo-notifications` when notification requirements outgrow Expo's API (custom channels, advanced triggers). |
-| Analytics | `@react-native-firebase/analytics` | |
-| Crash reporting | `@react-native-firebase/crashlytics` or Sentry (`@sentry/react-native`) | Pick one per app up front — don't run both. |
+| Analytics | `@react-native-firebase/analytics` | See `templates/src/utils/analytics.ts` — call `trackEvent(name, params)` instead of importing the SDK directly per call site (a production pattern this replaces: every screen did its own raw `require`+`getAnalytics`+`logEvent`). |
+| Crash reporting | `@react-native-firebase/crashlytics` or Sentry (`@sentry/react-native`) | Pick one per app up front — don't run both. `templates/src/components/ErrorBoundary.tsx`'s `onError` prop is the wiring seam — see `SKILL.md`'s "Optional patterns" → "Crash reporting hook". |
+
+## Updates & versioning
+
+| Need | Standard pick | Notes |
+|---|---|---|
+| OTA updates + force-update gate | `expo-updates` | See `templates/src/components/ui/UpdateBanner.tsx` and `reference/STANDARD.md` §10 — only relevant once the app actually adopts EAS Update, not part of the default scaffold. |
+
+## Ratings & reviews
+
+| Need | Standard pick | Notes |
+|---|---|---|
+| In-app review prompt | `expo-store-review` | See `templates/src/utils/requestAppReview.ts` — call `maybePromptForReview()` after a meaningful positive action (not on app open); tracks a persisted once-only flag (`hasPromptedReview`) in `useAppPreferencesStore`. |
 
 ## Internationalization
 
@@ -100,7 +114,7 @@ don't scaffold translation keys speculatively for a single-language app.
 
 | Need | Standard pick | Notes |
 |---|---|---|
-| Unit/component tests | `jest` + `@testing-library/react-native` | Test hooks and presentational components; screens usually don't need heavy unit coverage if their logic already lives in hooks (which are tested directly). |
+| Unit/component tests | `jest` (`jest-expo` preset) + `@testing-library/react-native` | **Promoted to core** (see `SKILL.md` step 17) — `templates/jest.config.js` + `templates/src/store/useAppPreferencesStore.test.ts` + `templates/src/components/ui/Button.test.tsx` are the worked examples, not just this recommendation. Test hooks and presentational components; screens usually don't need heavy unit coverage if their logic already lives in hooks (which are tested directly). |
 | E2E | Maestro | Simpler YAML-based flows than Detox for most app-level smoke tests; reach for Detox only if a test needs deeper native-level control. |
 
 ## What NOT to add speculatively

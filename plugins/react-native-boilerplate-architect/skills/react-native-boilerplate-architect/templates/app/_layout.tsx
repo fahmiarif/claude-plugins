@@ -7,8 +7,10 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { OfflineBanner } from '@/components/ui/OfflineBanner';
 import { queryClient } from '@/services/queryClient';
 import { useAppPreferencesStore } from '@/store/useAppPreferencesStore';
+import { useAuthStore } from '@/store/useAuthStore';
 
 // Module scope, not inside the component — must run before first render so
 // the native splash screen never auto-hides before we're ready to decide
@@ -29,14 +31,18 @@ SplashScreen.preventAutoHideAsync();
  * screen. Forgetting one of these here is a common "why doesn't X work"
  * bug in a fresh Expo Router app.
  *
- * The splash screen is held (not just shown at launch) until
- * `useAppPreferencesStore` finishes rehydrating from AsyncStorage. Without
- * this, `app/index.tsx` would briefly read the *default* `hasSeenOnboarding`
- * (false) before the persisted value loads, flashing the onboarding flow at
- * a returning user for one frame.
+ * The splash screen is held (not just shown at launch) until BOTH
+ * persisted stores finish rehydrating from AsyncStorage —
+ * `useAppPreferencesStore` (onboarding) and `useAuthStore` (session).
+ * Without this, `app/index.tsx` would briefly read the *default* value of
+ * whichever store hasn't hydrated yet (`hasSeenOnboarding: false` or
+ * `isAuthenticated: false`) before the persisted value loads, flashing the
+ * onboarding flow or the login screen at a returning user for one frame.
  */
 export default function RootLayout() {
-  const hasHydrated = useAppPreferencesStore((state) => state.hasHydrated);
+  const prefsHydrated = useAppPreferencesStore((state) => state.hasHydrated);
+  const authHydrated = useAuthStore((state) => state.hasHydrated);
+  const hasHydrated = prefsHydrated && authHydrated;
 
   useEffect(() => {
     if (hasHydrated) {
@@ -62,6 +68,7 @@ export default function RootLayout() {
             </Stack>
           </ErrorBoundary>
           <Toast />
+          <OfflineBanner />
         </QueryClientProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>

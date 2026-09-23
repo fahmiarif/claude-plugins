@@ -3,6 +3,7 @@ import React, { useCallback, useRef, useState } from 'react';
 import { Dimensions, ListRenderItemInfo, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   interpolate,
+  SharedValue,
   useAnimatedScrollHandler,
   useAnimatedStyle,
   useSharedValue,
@@ -105,7 +106,7 @@ export const OnboardingScreen = () => {
 
 interface OnboardingDotProps {
   index: number;
-  scrollX: Animated.SharedValue<number>;
+  scrollX: SharedValue<number>;
   color: string;
 }
 

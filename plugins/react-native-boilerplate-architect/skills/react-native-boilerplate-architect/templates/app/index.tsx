@@ -2,20 +2,18 @@ import { Redirect } from 'expo-router';
 import React from 'react';
 
 import { useAppPreferencesStore } from '@/store/useAppPreferencesStore';
+import { useAuthStore } from '@/store/useAuthStore';
 
 /**
  * Boot-time router — decides the first screen from onboarding/auth state
  * instead of hardcoding one. By the time this renders, the root layout has
- * already held the splash screen until the persisted store rehydrated, so
- * `hasSeenOnboarding` here is the real stored value, not the default.
+ * already held the splash screen until BOTH persisted stores rehydrated
+ * (see app/_layout.tsx), so `hasSeenOnboarding`/`isAuthenticated` here are
+ * the real stored values, not their defaults.
  */
 export default function Index() {
   const hasSeenOnboarding = useAppPreferencesStore((state) => state.hasSeenOnboarding);
-
-  // TODO: replace with a real session check once an auth hook exists — see
-  // SKILL.md step 4, don't wire the authenticated/unauthenticated branch
-  // speculatively before there's an actual session to check.
-  const isAuthenticated = false;
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
   if (!hasSeenOnboarding) return <Redirect href="/(onboarding)/welcome" />;
   if (!isAuthenticated) return <Redirect href="/(auth)/login" />;

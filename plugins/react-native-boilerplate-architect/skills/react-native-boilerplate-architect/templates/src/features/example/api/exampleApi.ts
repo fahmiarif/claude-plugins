@@ -2,8 +2,10 @@ import { apiClient } from '@/services/api/client';
 
 import type { ExampleItem } from '../types';
 
-// Same shape as the layer-based /src/services/api/example.ts — moved
-// here wholesale when this feature graduates to its own folder.
+// Feature-local endpoints import the shared Axios client from
+// /src/services/api/client.ts (interceptors, base URL) — the client
+// itself stays shared since every feature needs the same auth header
+// injection and 401 handling, not duplicated per feature.
 export async function fetchExampleItems(): Promise<ExampleItem[]> {
   const { data } = await apiClient.get<ExampleItem[]>('/examples');
   return data;

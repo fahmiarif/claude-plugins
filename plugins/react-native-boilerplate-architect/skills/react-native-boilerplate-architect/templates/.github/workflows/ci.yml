@@ -27,4 +27,4 @@ jobs:
         run: npm run lint
 
       - name: Test
-        run: npm test --if-present -- --watchAll=false
+        run: npm test -- --watchAll=false

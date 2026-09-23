@@ -6,9 +6,11 @@ interface AppPreferencesState {
   theme: 'light' | 'dark';
   hasSeenOnboarding: boolean;
   hasHydrated: boolean;
+  hasPromptedReview: boolean;
   setTheme: (theme: 'light' | 'dark') => void;
   markOnboardingSeen: () => void;
   setHasHydrated: (value: boolean) => void;
+  markReviewPrompted: () => void;
 }
 
 /**
@@ -27,14 +29,20 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
       theme: 'light',
       hasSeenOnboarding: false,
       hasHydrated: false,
+      hasPromptedReview: false,
       setTheme: (theme) => set({ theme }),
       markOnboardingSeen: () => set({ hasSeenOnboarding: true }),
       setHasHydrated: (value) => set({ hasHydrated: value }),
+      markReviewPrompted: () => set({ hasPromptedReview: true }),
     }),
     {
       name: 'app-preferences',
       storage: createJSONStorage(() => AsyncStorage),
-      partialize: (state) => ({ theme: state.theme, hasSeenOnboarding: state.hasSeenOnboarding }),
+      partialize: (state) => ({
+        theme: state.theme,
+        hasSeenOnboarding: state.hasSeenOnboarding,
+        hasPromptedReview: state.hasPromptedReview,
+      }),
       onRehydrateStorage: () => (state) => state?.setHasHydrated(true),
     }
   )

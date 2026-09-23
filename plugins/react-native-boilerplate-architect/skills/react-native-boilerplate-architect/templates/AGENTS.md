@@ -8,17 +8,18 @@ File ini berisi panduan, aturan, dan standar struktur project untuk membantu AI 
 - **Bahasa:** Selalu gunakan **TypeScript** (`strict: true`). Dilarang menggunakan `any` sebisa mungkin; selalu gunakan `interface`/`type` untuk semua props, state, dan response API.
 
 ## 2. Struktur Direktori
-- `/app` : Routing only (Expo Router). Setipis mungkin — import screen dari `/src/screens` lalu render.
-- `/src/screens/<Feature>` : Container screen — memanggil hooks, compose presentational components.
-- `/src/components` : Komponen UI reusable. `/src/components/ui` khusus primitives (Button, Input, Card).
-- `/src/hooks` : Business logic & data-fetching (React Query hooks di sini).
-- `/src/services/api` : Axios client + endpoint per resource.
+**Feature-based sejak awal — bukan opsi upgrade nanti.** Setiap fitur (termasuk fitur pertama di project baru) punya folder sendiri:
+`/src/features/<feature>/{screens,components,hooks,api,types}`. Lihat `templates/src/features/example/` untuk contoh lengkapnya (types → api → hooks → components → screens).
+
+Folder layer di bawah ini khusus untuk yang benar-benar dipakai lintas fitur, atau infrastruktur app-shell (splash, onboarding, auth screens) yang bukan "fitur bisnis":
+- `/app` : Routing only (Expo Router). Setipis mungkin — import screen dari fitur terkait (`/src/features/<feature>/screens/`) lalu render.
+- `/src/components/ui` : Design-system primitives yang dipakai lintas fitur (Button, FormField, Card).
+- `/src/hooks` : Hook SHARED/lintas-fitur saja (`useTheme`, `useNetworkStatus`). Hook khusus satu fitur ada di `hooks/` folder fitur itu sendiri.
+- `/src/services/api` : Axios client dasar (interceptor, base URL) + endpoint yang dipakai lintas fitur. Endpoint khusus fitur ada di `api/` folder fitur itu.
 - `/src/store` : Zustand — client state saja, bukan server data.
 - `/src/utils` : Pure helper functions.
-- `/src/types` : Interface/type yang dipakai lintas file.
+- `/src/types` : Interface/type yang dipakai lintas fitur.
 - `/src/constants` : Warna, config statis, string.
-
-Kalau app sudah besar, kelompokkan per fitur: `/src/features/<feature>/{components,hooks,api,types}`.
 
 ## 3. Standar Penulisan Kode
 
