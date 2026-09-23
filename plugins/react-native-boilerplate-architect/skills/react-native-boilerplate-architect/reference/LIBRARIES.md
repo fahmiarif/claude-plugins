@@ -4,9 +4,13 @@ This is the "which library do I reach for" reference — it exists so
 every PT PSM app makes the same choice for the same problem instead of
 each developer/agent picking whatever shows up first in a search. These
 are **supplementary** to the mandatory core stack in `STANDARD.md`
-(routing, TS, TanStack Query, Zustand, RHF+Zod, FlashList, Reanimated) —
-install on demand when a feature actually needs one, not speculatively
-at scaffold time.
+(routing, TS, TanStack Query, Zustand, RHF+Zod, FlashList, Reanimated,
+AsyncStorage) — install on demand when a feature actually needs one, not
+speculatively at scaffold time. AsyncStorage is the one exception already
+installed at scaffold time (see `SKILL.md` step 5) because the persisted
+`hasSeenOnboarding` flag in `templates/src/store/useAppPreferencesStore.ts`
+depends on it out of the box — it's still listed below under "Storage,
+network, device" for completeness, not because it's optional.
 
 When a need isn't listed here, prefer (in order): an Expo SDK module
 (`expo-*`, actively maintained, guaranteed compatible with the installed

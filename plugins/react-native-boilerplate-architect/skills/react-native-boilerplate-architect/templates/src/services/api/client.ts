@@ -1,7 +1,9 @@
 import axios from 'axios';
 
+import { env } from '@/constants/env';
+
 export const apiClient = axios.create({
-  baseURL: process.env.EXPO_PUBLIC_API_URL,
+  baseURL: env.EXPO_PUBLIC_API_URL,
   timeout: 15000,
 });
 

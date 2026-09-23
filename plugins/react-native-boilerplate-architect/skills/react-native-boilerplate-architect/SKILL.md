@@ -1,9 +1,9 @@
 ---
 name: react-native-boilerplate-architect
-description: Scaffolds and enforces PT PSM's production-grade React Native (Expo) boilerplate — file-based routing via Expo Router, TypeScript strict mode, TanStack Query + Zustand + React Hook Form/Zod, feature-based modular folders, and team anti-conflict tooling (Prettier + ESLint + Husky + lint-staged pre-commit, Commitlint conventional commits, CI gate on GitHub Actions for iOS/Android). Use when starting a new React Native/Expo app, when asked to set up a boilerplate/starter/template for a mobile app, or when auditing an existing RN app against these standards ("bikin boilerplate RN", "setup starter react native", "cek project ini udah sesuai standar belum").
+description: Scaffolds and enforces PT PSM's production-grade React Native (Expo) boilerplate — file-based routing via Expo Router, TypeScript strict mode, TanStack Query + Zustand + React Hook Form/Zod, feature-based modular folders, a first-launch splash/welcome/onboarding flow, and team anti-conflict tooling (Prettier + ESLint + Husky + lint-staged pre-commit, Commitlint conventional commits, CI gate on GitHub Actions for iOS/Android). Use when starting a new React Native/Expo app, when asked to set up a boilerplate/starter/template for a mobile app, when adding a splash screen/welcome screen/onboarding carousel, or when auditing an existing RN app against these standards ("bikin boilerplate RN", "setup starter react native", "bikin onboarding/splash screen", "cek project ini udah sesuai standar belum").
 metadata:
   author: fahmi
-  version: "1.0.0"
+  version: "1.2.0"
 ---
 
 # React Native (Expo) Boilerplate Architect
@@ -144,12 +144,21 @@ Install (skip any already present):
 ```
 npm install @tanstack/react-query zustand axios react-hook-form zod @hookform/resolvers date-fns
 npm install -D prettier eslint-config-prettier eslint-plugin-simple-import-sort husky lint-staged @commitlint/cli @commitlint/config-conventional
+npx expo install @react-native-async-storage/async-storage expo-splash-screen
 ```
 
 Adjust the exact `expo`/`react-native` aligned versions with
 `npx expo install <pkg>` for any Expo-managed native packages instead of
 plain `npm install`, so versions stay compatible with the installed Expo
-SDK.
+SDK — this is why AsyncStorage and `expo-splash-screen` are installed that
+way above, not via plain `npm install`. `expo-splash-screen` and gesture
+handler/safe-area-context are normally already present from
+`create-expo-app`'s default template; skip re-installing if so.
+
+AsyncStorage graduated from "supplementary, install on demand"
+(`reference/LIBRARIES.md`) to core here because the onboarding-flag
+persistence pattern in step 6 depends on it out of the box — every
+scaffolded app needs `hasSeenOnboarding` to survive a restart.
 
 For anything beyond this core list — bottom sheet, toast, date picker,
 charts, secure storage, analytics, etc. — check
@@ -158,14 +167,59 @@ search. It's the standard pick per common need, kept consistent across
 PT PSM apps. Install those on demand when a feature actually needs them,
 not speculatively at scaffold time.
 
-### 6. TypeScript strict mode + path aliases
+### 6. Splash, Welcome & Onboarding flow (new-user first launch)
+
+Every consumer-facing app needs this three-part first-launch sequence, and
+skipping it is the most common "feels unfinished" gap in a fresh scaffold:
+
+1. **Splash screen** — the native launch image, held open (not just shown
+   momentarily) until the app has actually decided what to show next.
+   Copy the pattern already wired into `templates/app/_layout.tsx`:
+   `SplashScreen.preventAutoHideAsync()` at module scope, then
+   `SplashScreen.hideAsync()` once `useAppPreferencesStore`'s persisted
+   state (`hasHydrated`) has loaded. Skipping the hydration wait is the
+   bug to avoid here — without it, a returning user can see a one-frame
+   flash of the onboarding flow before the persisted "already seen it"
+   flag loads.
+2. **Welcome screen** — a single static branding screen
+   (`templates/app/(onboarding)/welcome.tsx` →
+   `templates/src/screens/Onboarding/WelcomeScreen.tsx`). No feature
+   content here, just logo/tagline + one CTA into the onboarding carousel.
+3. **Onboarding carousel** — a swipeable, skippable set of feature-highlight
+   slides shown exactly once
+   (`templates/app/(onboarding)/onboarding.tsx` →
+   `templates/src/screens/Onboarding/OnboardingScreen.tsx`), gated by the
+   `hasSeenOnboarding` flag in `templates/src/store/useAppPreferencesStore.ts`
+   (persisted via `zustand`'s `persist` middleware + AsyncStorage — an
+   in-memory-only flag would replay onboarding every app launch, which
+   defeats the point). Slide copy lives in
+   `templates/src/constants/onboardingSlides.ts`, not inline in the
+   screen, so it's a one-file change to edit or translate.
+
+Wire the route group in: copy
+`templates/app/(onboarding)/_layout.tsx` + `welcome.tsx` + `onboarding.tsx`,
+add `Stack.Screen name="(onboarding)"` to the root layout (already in
+`templates/app/_layout.tsx`), and copy `templates/app/index.tsx` — a boot
+router (`<Redirect>`) that sends the user to `(onboarding)/welcome` if
+`hasSeenOnboarding` is false, otherwise to `(auth)` or `(tabs)` per the
+same not-yet-wired auth check called out in step 4. Onboarding's "Mulai"
+button calls `markOnboardingSeen()` then `router.replace` (not `push`) into
+`(auth)` — the carousel must not be reachable via the back button once
+finished.
+
+This is scaffolded for every new project, not optional like step 3's
+feature-folder migration — a first-launch experience is expected in
+basically every consumer mobile app, whereas feature-based folders are an
+app-size-dependent upgrade.
+
+### 7. TypeScript strict mode + path aliases
 
 Ensure `tsconfig.json` extends `expo/tsconfig.base` with `"strict": true`
 and a `@/*` → `./src/*` path alias — copy the pattern from
 `templates/tsconfig.json` if the project doesn't have one yet. Never
 relax `strict` to make errors go away.
 
-### 7. Anti-conflict tooling (this is the part most RN starters skip)
+### 8. Anti-conflict tooling (this is the part most RN starters skip)
 
 Copy these templates in, adapting names/scopes as needed:
 - `templates/eslint.config.js` — flat config, extends `eslint-config-expo`,
@@ -182,7 +236,7 @@ whitespace/quote-style noise on top of the real diff, which is what
 actually produces conflicts and unreviewable PRs on a team — not the
 business logic.
 
-### 8. Pre-commit gate (Husky + lint-staged)
+### 9. Pre-commit gate (Husky + lint-staged)
 
 ```
 npx husky init
@@ -192,7 +246,7 @@ Then write `templates/.husky/pre-commit` and `templates/.lintstagedrc.json`
 into place — pre-commit runs `lint-staged` (prettier --write + eslint --fix
 on staged files only, fast) and `tsc --noEmit` on the whole project.
 
-### 9. Commit convention + branch naming
+### 10. Commit convention + branch naming
 
 - Write `templates/commitlint.config.js` and `templates/.husky/commit-msg`.
 - Copy `templates/CONTRIBUTING.md` — documents Conventional Commits
@@ -202,21 +256,21 @@ on staged files only, fast) and `tsc --noEmit` on the whole project.
 This is what makes `git log` and blame useful across many apps over time,
 and gives CI something structured to gate on later if needed.
 
-### 10. CI gate (GitHub Actions)
+### 11. CI gate (GitHub Actions)
 
 Copy `templates/.github/workflows/ci.yml` — runs `npm ci`, `npm run
 typecheck`, `npm run lint`, and tests (if a test script exists) on every
 PR. This is what actually blocks a broken PR from merging, not just a
 local hook a developer can skip with `--no-verify`.
 
-### 11. Project-level AGENTS.md
+### 12. Project-level AGENTS.md
 
 Copy `templates/AGENTS.md` into the new project's root (renamed to fit,
 `CLAUDE.md` can just be `@AGENTS.md` per the existing pattern in
 `meet-manajio-mobile`) so future AI-assisted work in that repo follows the
 same standard without needing this skill re-invoked every time.
 
-### 12. Theming & design tokens
+### 13. Theming & design tokens
 
 Copy `templates/src/constants/theme.ts` (colors, spacing, typography as
 plain objects — light/dark palettes) and `templates/src/hooks/useTheme.ts`
@@ -230,7 +284,7 @@ react-native-paper's ThemeProvider) unless the project already needs one
 of those for other reasons — plain objects + a hook cover the actual
 requirement (centralized tokens) without adding a dependency.
 
-### 13. Loading / empty / error state pattern
+### 14. Loading / empty / error state pattern
 
 Copy `templates/src/components/ui/QueryState.tsx` — wraps a React Query
 list result so every screen renders the same three non-happy-path states
@@ -243,7 +297,7 @@ Also copy `templates/src/components/ui/Screen.tsx` — a `SafeAreaView` +
 padding wrapper every screen uses instead of repeating that layout
 boilerplate per file.
 
-### 14. Example code (only for brand-new projects)
+### 15. Example code (only for brand-new projects)
 
 Copy the illustrative pattern files from `templates/src/` — one Zustand
 store, one React Query hook, one RHF+Zod form example, one Axios client,
@@ -251,7 +305,7 @@ one presentational `ui` component with colocated `StyleSheet` — so the
 first PR in a new repo has a concrete pattern to copy instead of
 reinventing one. Delete/adapt naming to the actual feature.
 
-### 15. Sanity check
+### 16. Sanity check
 
 Run `npm run typecheck` and `npm run lint` after scaffolding and report
 results to the user — don't declare the boilerplate done without
@@ -281,5 +335,8 @@ not already decided:
   storage, auth, analytics, testing...) — check before recommending or
   installing a library not already in the core stack
 - `templates/` — copy-ready config/template files referenced above,
-  including `templates/app/` (route-group navigation skeleton) and
-  `templates/src/features/example/` (feature-based folder worked example)
+  including `templates/app/` (route-group navigation skeleton, including
+  the `(onboarding)` group + boot-time `index.tsx` router),
+  `templates/src/screens/Onboarding/` (Welcome + Onboarding carousel
+  screens), and `templates/src/features/example/` (feature-based folder
+  worked example)

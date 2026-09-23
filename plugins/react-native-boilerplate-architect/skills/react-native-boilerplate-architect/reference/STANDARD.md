@@ -151,14 +151,71 @@ reasons — plain objects + a hook are enough for the actual requirement.
   path (via React Query's `isError`/`onError`), never assume the happy
   path only.
 
-## 6. Naming
+## 6. Splash, Welcome & Onboarding
+
+Every consumer-facing app has a first-launch sequence: a native splash
+screen, a static welcome screen, and a skippable onboarding carousel
+introducing the app's value before the user reaches auth. This is a
+required part of the scaffold, not an optional add-on — an app with no
+onboarding still needs a splash-hold pattern so it doesn't flash the wrong
+screen at launch.
+
+- **Splash screen**: `expo-splash-screen`'s `preventAutoHideAsync()` is
+  called at module scope in `app/_layout.tsx`, before the component tree
+  even renders, and `hideAsync()` is only called once the app has actually
+  decided what's behind it — not on a fixed timer. Concretely, that means
+  holding it until `useAppPreferencesStore`'s persisted state has
+  rehydrated from AsyncStorage (see below). A splash screen hidden before
+  that decision is made is what causes the classic bug where a returning
+  user sees onboarding flash for one frame before snapping to their real
+  destination.
+- **Welcome screen**: one static screen (logo, tagline, single CTA) — no
+  feature content, no logic beyond navigating into onboarding. Feature
+  highlights belong in the carousel, not here; conflating the two makes
+  both harder to edit independently.
+- **Onboarding carousel**: a swipeable, skippable set of slides, shown
+  **exactly once** per install. "Shown once" is a persistence requirement,
+  not just a UI detail — the `hasSeenOnboarding` flag lives in Zustand
+  (`/src/store`, per the state-category table in §2a: it's client-only,
+  no server source of truth) but must be wrapped in `persist` +
+  `createJSONStorage(() => AsyncStorage)`, not left as plain in-memory
+  Zustand state. An unpersisted flag resets to `false` on every cold start,
+  which means onboarding replays every launch — a bug that's easy to miss
+  in dev (where the app rarely fully restarts) and obvious in production.
+- **Finishing onboarding**: call `markOnboardingSeen()` then
+  `router.replace(...)` (not `push`) into the auth/main flow. Using
+  `replace` means the onboarding route is no longer in the stack, so the
+  hardware/gesture back button can't return to it — consistent with the
+  general back-stack-behavior rule in `AGENTS.md` §C.
+- **Boot-time routing**: `app/index.tsx` reads `hasSeenOnboarding` (and,
+  once wired, the real auth/session state) and issues a `<Redirect>` to
+  exactly one of `(onboarding)/welcome`, `(auth)/login`, or `(tabs)` — this
+  replaces a hand-rolled "which screen do I show first" check that would
+  otherwise live awkwardly inside a screen component.
+- A 3-slide onboarding carousel is a short, fixed-length list — rendering
+  it with `FlatList`/`Animated.FlatList` does not conflict with the
+  "FlashList for long lists" rule in §1; that rule targets long/dynamic
+  data, not a handful of static slides.
+- Animate the dot indicator by driving a Reanimated shared value off
+  scroll position (`useAnimatedScrollHandler` + `useAnimatedStyle`) instead
+  of re-rendering a JS `useState` index on every scroll frame — this is
+  the concrete case the `react-native-reanimated` rule in §1 is protecting
+  against.
+
+See `templates/app/(onboarding)/`, `templates/src/screens/Onboarding/`,
+`templates/src/constants/onboardingSlides.ts`, and the updated
+`templates/src/store/useAppPreferencesStore.ts` /
+`templates/app/_layout.tsx` / `templates/app/index.tsx` for the full
+worked pattern.
+
+## 7. Naming
 
 - Components/screens: `PascalCase.tsx`
 - Hooks/utils: `camelCase.ts` (hooks always prefixed `use`)
 - Constants: `UPPER_SNAKE_CASE`
 - Branches: `feature/`, `fix/`, `chore/` + short kebab-case slug
 
-## 7. Auditing an existing project against this standard
+## 8. Auditing an existing project against this standard
 
 When asked to audit, check for (and report as gaps, don't silently fix
 without confirming):
@@ -187,3 +244,9 @@ without confirming):
     developers, are any single features' hooks/api/components growing
     past the point where `/src/features/<feature>` would reduce
     collisions? (Flag as a suggestion, not a required fix.)
+14. Does the app hold the splash screen until app-ready state (e.g.
+    persisted-store hydration) instead of hiding it on a fixed timer or
+    immediately on mount? Is there a welcome/onboarding flow at all for
+    first-time users, and if so, is `hasSeenOnboarding` actually persisted
+    (AsyncStorage-backed `persist` middleware) rather than plain in-memory
+    Zustand state that would replay onboarding every launch?

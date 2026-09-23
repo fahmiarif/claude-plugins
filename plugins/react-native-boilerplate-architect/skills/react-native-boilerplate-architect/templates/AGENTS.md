@@ -86,3 +86,10 @@ Untuk kebutuhan umum di luar stack inti (bottom sheet, toast/snackbar, action sh
 - **Haptic feedback:** `expo-haptics`
 
 Instal hanya saat benar-benar dibutuhkan fitur, bukan speculative di awal project. Daftar lengkap + rasional tiap pilihan ada di `reference/LIBRARIES.md` pada skill `react-native-boilerplate-architect`.
+
+## 9. Splash, Welcome & Onboarding
+- Splash screen ditahan (`expo-splash-screen`: `preventAutoHideAsync()` di module scope pada `app/_layout.tsx`) sampai state persisted (`useAppPreferencesStore`) selesai rehydrate — jangan sembunyikan splash sebelum itu, supaya user lama tidak melihat onboarding kedip sesaat.
+- Welcome screen: 1 layar statis (logo + tagline + 1 CTA), tanpa logika lain. Konten fitur ada di carousel onboarding, bukan di sini.
+- Onboarding carousel tampil **sekali** saja per install — flag `hasSeenOnboarding` di Zustand **wajib** di-persist (`persist` + AsyncStorage), bukan in-memory saja, supaya tidak replay tiap buka app.
+- Setelah onboarding selesai, panggil `markOnboardingSeen()` lalu `router.replace(...)` (bukan `push`) supaya tombol back tidak bisa kembali ke onboarding.
+- Lihat `templates/app/(onboarding)/`, `templates/src/screens/Onboarding/`, dan `templates/app/index.tsx` pada skill `react-native-boilerplate-architect` untuk pattern lengkapnya.
