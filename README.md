@@ -5,9 +5,17 @@ tooling/standards packaged as installable plugins.
 
 ## Install
 
+The repo is private, so add it by SSH URL (the `owner/repo` shorthand
+defaults to HTTPS, which fails without a git credential helper — see
+`git@github.com:fahmiarif/claude-plugins.git` below). The marketplace's
+internal name is `psm-plugins` (not `claude-plugins` — Claude Code blocks
+marketplace names that read as impersonating an official Anthropic
+marketplace), so that's the name used in the `@marketplace` suffix below,
+even though the repo itself is still called `claude-plugins`.
+
 ```
-/plugin marketplace add fahmi/claude-plugins
-/plugin install react-native-boilerplate-architect@claude-plugins
+/plugin marketplace add git@github.com:fahmiarif/claude-plugins.git
+/plugin install react-native-boilerplate-architect@psm-plugins
 ```
 
 ## Plugins in this repo
@@ -45,5 +53,5 @@ Users pull updates with:
 
 ```
 /plugin marketplace update
-/plugin update react-native-boilerplate-architect@claude-plugins
+/plugin update react-native-boilerplate-architect@psm-plugins
 ```
