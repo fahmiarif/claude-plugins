@@ -1,0 +1,9 @@
+# Replace appId with this app's actual package/bundle identifier
+# (app.json's expo.android.package / expo.ios.bundleIdentifier).
+# Requires a dev client or build — launchApp + appId doesn't work
+# against plain Expo Go, see SKILL.md's "Optional patterns" →
+# "End-to-end tests (Maestro)".
+appId: com.yourorg.yourapp
+---
+- launchApp
+- assertVisible: "Mulai"

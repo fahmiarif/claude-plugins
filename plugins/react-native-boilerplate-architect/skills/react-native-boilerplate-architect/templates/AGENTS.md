@@ -37,7 +37,11 @@ Folder layer di bawah ini khusus untuk yang benar-benar dipakai lintas fitur, at
 - Perhatikan back-stack behavior — hindari fallback rute hardcoded.
 
 ### D. Styling & Performa
-- Style di bagian bawah file `.tsx` yang sama via `StyleSheet.create({...})` (colocation). Kecuali project pakai NativeWind/Tailwind.
+- Style di bagian bawah file `.tsx` yang sama via `StyleSheet.create({...})` (colocation) — jangan pisah ke file `.styles.ts` terpisah.
+- Variant/state styling pakai array style: `[styles.base, isActive && styles.active]` — bukan object kondisional besar atau template literal. Lihat `Button.tsx`/`FormField.tsx` di boilerplate untuk contohnya.
+- Komponen reusable yang menerima prop `style` dari luar, tipe-kan sebagai `StyleProp<ViewStyle>`/`StyleProp<TextStyle>`, bukan `ViewStyle` saja — supaya caller bisa kirim array, bukan cuma satu object.
+- Jangan bikin object style baru inline di dalam `renderItem` — pakai `styles.x` statis dari `StyleSheet.create` di luar, sama seperti aturan "jangan inline function" di bawah.
+- NativeWind/Tailwind itu pilihan per-project, bukan default — pakai kalau tim sudah terbiasa Tailwind di web companion app, atau butuh iterasi layout cepat lewat utility class. Kalau dipakai, terapkan konsisten di seluruh app, jangan campur `StyleSheet` dan `className` per-screen.
 - Hindari inline function/object ke child component — pakai `useCallback`/`useMemo`.
 
 ### E. Dokumentasi & Komentar

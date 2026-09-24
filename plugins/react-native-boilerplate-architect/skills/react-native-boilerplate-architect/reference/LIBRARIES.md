@@ -80,11 +80,11 @@ Expo-managed native module, or `npm install` otherwise.
 
 | Need | Standard pick | Notes |
 |---|---|---|
-| Google Sign-In | `@react-native-google-signin/google-signin` | |
+| Google Sign-In | `@react-native-google-signin/google-signin` | See `templates/src/hooks/useGoogleSignIn.ts` and `SKILL.md`'s "Optional patterns" → "Google Sign-In" — used as a credential-acquisition step feeding this app's own backend/session, not a Firebase Auth replacement. Requires a dev client, not Expo Go. |
 | Apple Sign-In | `expo-apple-authentication` | Required by App Store guidelines if Google/Facebook sign-in is offered on iOS. |
 | In-app purchases / subscriptions | `react-native-iap` | |
 | Push notifications (basic) | `expo-notifications` | See `templates/src/hooks/usePushNotifications.ts` + `templates/src/services/api/pushNotifications.ts` for the permission + token-registration + tap/foreground-listener pattern once this is installed — a reference to adapt, not a drop-in (the backend endpoint shape is app-specific). |
-| Push notifications (advanced local scheduling, richer Android controls) | `@notifee/react-native` | Reach for this on top of `expo-notifications` when notification requirements outgrow Expo's API (custom channels, advanced triggers). |
+| Push notifications (Firebase-based, richer native control) | `@react-native-firebase/messaging` + `@notifee/react-native` | **Alternative** to `expo-notifications` above, not additive — see `templates/src/hooks/useFirebaseMessaging.ts` and `SKILL.md`'s "Optional patterns" → "Firebase Cloud Messaging". Reach for this once the app already uses Firebase directly and wants custom Android channels or data-only background messages; pick one push pattern, not both. |
 | Analytics | `@react-native-firebase/analytics` | See `templates/src/utils/analytics.ts` — call `trackEvent(name, params)` instead of importing the SDK directly per call site (a production pattern this replaces: every screen did its own raw `require`+`getAnalytics`+`logEvent`). |
 | Crash reporting | `@react-native-firebase/crashlytics` or Sentry (`@sentry/react-native`) | Pick one per app up front — don't run both. `templates/src/components/ErrorBoundary.tsx`'s `onError` prop is the wiring seam — see `SKILL.md`'s "Optional patterns" → "Crash reporting hook". |
 
@@ -92,7 +92,7 @@ Expo-managed native module, or `npm install` otherwise.
 
 | Need | Standard pick | Notes |
 |---|---|---|
-| OTA updates + force-update gate | `expo-updates` | See `templates/src/components/ui/UpdateBanner.tsx` and `reference/STANDARD.md` §10 — only relevant once the app actually adopts EAS Update, not part of the default scaffold. |
+| OTA updates + force-update gate | `expo-updates` | See `templates/src/components/ui/UpdateBanner.tsx` and `reference/STANDARD.md` §12 — only relevant once the app actually adopts EAS Update, not part of the default scaffold. |
 
 ## Ratings & reviews
 
@@ -110,12 +110,27 @@ Expo-managed native module, or `npm install` otherwise.
 Only add i18n at all once the app actually needs more than one language —
 don't scaffold translation keys speculatively for a single-language app.
 
+## Performance & bundle analysis
+
+| Need | Standard pick | Notes |
+|---|---|---|
+| Bundle composition analysis | `source-map-explorer` (or `react-native-bundle-visualizer`) | Run against `npx expo export`'s output before guessing what's bloating the bundle — see `reference/STANDARD.md` §10c. Not installed by default; pull in ad hoc when actually investigating bundle size, not as a standing dependency. |
+| Re-render/FPS profiling | React DevTools Profiler (Flipper's React DevTools plugin, or the standalone `react-devtools` package) | First tool to reach for on any "app feels slow" report — see `reference/STANDARD.md` §10a's measure-first rule. No install needed beyond the DevTools app itself. |
+
 ## Testing
 
 | Need | Standard pick | Notes |
 |---|---|---|
 | Unit/component tests | `jest` (`jest-expo` preset) + `@testing-library/react-native` | **Promoted to core** (see `SKILL.md` step 17) — `templates/jest.config.js` + `templates/src/store/useAppPreferencesStore.test.ts` + `templates/src/components/ui/Button.test.tsx` are the worked examples, not just this recommendation. Test hooks and presentational components; screens usually don't need heavy unit coverage if their logic already lives in hooks (which are tested directly). |
-| E2E | Maestro | Simpler YAML-based flows than Detox for most app-level smoke tests; reach for Detox only if a test needs deeper native-level control. |
+| E2E | Maestro | Simpler YAML-based flows than Detox for most app-level smoke tests; reach for Detox only if a test needs deeper native-level control. See `templates/.maestro/` for two worked flows and `SKILL.md`'s "Optional patterns" → "End-to-end tests (Maestro)" for install/CI guidance — requires a dev client or build, not Expo Go. |
+
+## Monorepo tooling
+
+| Need | Standard pick | Notes |
+|---|---|---|
+| Workspace/package management | `npm workspaces` (built into npm, no separate package) | See `reference/STANDARD.md` §14 — only relevant once more than one app shares code. |
+| Build cache / task graph (once CI re-runs on unchanged packages gets slow) | `turbo` (Turborepo) | Add once plain workspace scripts are actually too slow, not by default. |
+| Generators / affected-graph tooling | `nx` | A bigger step than Turborepo — worth it only once a team wants that machinery specifically. |
 
 ## What NOT to add speculatively
 

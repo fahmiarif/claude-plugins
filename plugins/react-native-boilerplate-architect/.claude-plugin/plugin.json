@@ -1,7 +1,7 @@
 {
   "name": "react-native-boilerplate-architect",
-  "description": "Scaffolds and enforces PT PSM's production-grade React Native (Expo) boilerplate: file-based routing, TypeScript strict mode, mandatory feature-based folders from day one, TanStack Query + Zustand + React Hook Form/Zod (via a reusable FormField), a splash/welcome/onboarding flow, session/connectivity handling (SecureStore auth, 401 redirect, offline banner), an accessibility baseline, a Jest/Testing Library baseline, and team anti-conflict tooling (Prettier/ESLint/Husky/lint-staged, Commitlint, CI gate). Optional patterns: crash reporting, analytics, deep linking, force-update/OTA, push notifications, review prompts, product tour.",
-  "version": "1.5.0",
+  "description": "Scaffolds and enforces PT PSM's production-grade React Native (Expo) boilerplate: file-based routing, TypeScript strict mode, mandatory feature-based folders enforced at lint time, TanStack Query + Zustand + React Hook Form/Zod (via a reusable FormField), a splash/welcome/onboarding flow, session/connectivity handling (SecureStore auth, 401 redirect, offline banner), an accessibility baseline, a measure-before-optimizing performance principle, a Jest/Testing Library + Maestro E2E baseline, a setup/build/OTA README, and team anti-conflict tooling (Prettier/ESLint/Husky/lint-staged, Commitlint, CI gate). Optional patterns: crash reporting, analytics, deep linking, force-update/OTA, Google Sign-In, push notifications (Expo or Firebase), review prompts, product tour, monorepo setup.",
+  "version": "1.10.0",
   "author": {
     "name": "fahmi"
   }

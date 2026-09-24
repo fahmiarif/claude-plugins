@@ -1,9 +1,9 @@
 ---
 name: react-native-boilerplate-architect
-description: Scaffolds and enforces PT PSM's production-grade React Native (Expo) boilerplate — file-based routing via Expo Router, TypeScript strict mode, mandatory feature-based folders from day one (`/src/features/<feature>/{screens,components,hooks,api,types}`), TanStack Query + Zustand + React Hook Form/Zod (via a reusable FormField component), a first-launch splash/welcome/onboarding flow, session/connectivity handling (SecureStore-backed auth store, 401 redirect, offline banner), an accessibility baseline, a testing baseline (Jest + Testing Library), and team anti-conflict tooling (Prettier + ESLint + Husky + lint-staged pre-commit, Commitlint conventional commits, CI gate on GitHub Actions for iOS/Android). Optional patterns include a crash-reporting seam, an analytics wrapper, deep linking, a force-update/OTA banner, push notifications, an app-review prompt, and a spotlight product tour. Use when starting a new React Native/Expo app, when asked to set up a boilerplate/starter/template for a mobile app, when adding a splash/onboarding/auth/offline-banner/product-tour/form flow, or when auditing an existing RN app against these standards ("bikin boilerplate RN", "setup starter react native", "bikin onboarding/splash screen", "cek project ini udah sesuai standar belum").
+description: Scaffolds and enforces PT PSM's production-grade React Native (Expo) boilerplate — file-based routing via Expo Router, TypeScript strict mode, mandatory feature-based folders from day one enforced at lint time (`eslint-plugin-boundaries` blocks cross-feature imports), TanStack Query + Zustand + React Hook Form/Zod (via a reusable FormField component), a first-launch splash/welcome/onboarding flow, session/connectivity handling (SecureStore-backed auth store, 401 redirect, offline banner), an accessibility baseline, a testing baseline (Jest + Testing Library + Maestro E2E), a measure-before-optimizing performance principle (bundle-size analysis, no speculative memoization), a README covering setup/APK builds/production/OTA updates, and team anti-conflict tooling (Prettier + ESLint + Husky + lint-staged pre-commit, Commitlint conventional commits, CI gate on GitHub Actions for iOS/Android). Optional patterns include a crash-reporting seam, an analytics wrapper, deep linking, a force-update/OTA banner, Google Sign-In (feeding the app's own backend/session, not a Firebase Auth replacement), push notifications (expo-notifications or, as an alternative, Firebase Cloud Messaging + Notifee), an app-review prompt, a spotlight product tour, and monorepo setup guidance. Use when starting a new React Native/Expo app, when asked to set up a boilerplate/starter/template for a mobile app, when adding a splash/onboarding/auth/offline-banner/product-tour/form/E2E/Google-login/notification flow, when scaling to a monorepo, when writing a README/setup guide, or when auditing an existing RN app against these standards ("bikin boilerplate RN", "setup starter react native", "bikin onboarding/splash screen", "bikin README setup/build/OTA", "bikin login Google/Firebase", "cek project ini udah sesuai standar belum").
 metadata:
   author: fahmi
-  version: "1.5.0"
+  version: "1.10.0"
 ---
 
 # React Native (Expo) Boilerplate Architect
@@ -280,9 +280,19 @@ relax `strict` to make errors go away.
 Copy these templates in, adapting names/scopes as needed:
 - `templates/eslint.config.js` — flat config, extends `eslint-config-expo`,
   adds `simple-import-sort` (kills "who's on top of the import block"
-  conflicts) and bans default/barrel re-exports.
+  conflicts) and bans default/barrel re-exports — this also protects
+  bundle size (barrel files defeat tree-shaking), see
+  `reference/STANDARD.md` §10c. Also adds `eslint-plugin-boundaries` to
+  enforce feature-folder isolation (§2d) — a feature can't import
+  another feature's internals, only its own files or the shared layer
+  folders; this is a lint error, not a code-review nitpick someone has
+  to remember to raise once the team grows.
 - `templates/.prettierrc.json` + `templates/.prettierignore`
 - `templates/.editorconfig`
+
+```
+npm install -D eslint-plugin-boundaries eslint-import-resolver-typescript
+```
 
 Add to `package.json` scripts: `"format": "prettier --write .",
 "typecheck": "tsc --noEmit"`.
@@ -321,12 +331,24 @@ developer can skip with `--no-verify`. Unconditional now, not
 `--if-present` — step 17 means a freshly scaffolded app always has a test
 script, so CI no longer needs to silently skip a step that should exist.
 
-### 13. Project-level AGENTS.md
+### 13. Project-level docs (AGENTS.md + README.md)
 
 Copy `templates/AGENTS.md` into the new project's root (renamed to fit,
 `CLAUDE.md` can just be `@AGENTS.md` per the existing pattern in
 `meet-manajio-mobile`) so future AI-assisted work in that repo follows the
 same standard without needing this skill re-invoked every time.
+
+Also copy `templates/README.md` — fill in the app name/description
+placeholder, and adjust the build/OTA section if the project's `eas.json`
+profiles differ from the default three. This is the human-facing
+counterpart to `AGENTS.md`: setup, dev scripts, building an installable
+APK vs. a store submission, and publishing an OTA update via EAS Update
+(including the `eas build` produces `.aab`-by-default /
+`buildType: apk`-override gotcha, and that `eas update` only reaches
+builds on the matching `channel`) — the kind of practical commands a new
+team member or a project handed to another dev shouldn't have to
+rediscover from scratch. Keep it in sync with `templates/eas.json`'s
+actual profiles/channels rather than letting the two drift.
 
 ### 14. Theming & design tokens
 
@@ -341,6 +363,14 @@ Don't reach for a heavier theming library (styled-components,
 react-native-paper's ThemeProvider) unless the project already needs one
 of those for other reasons — plain objects + a hook cover the actual
 requirement (centralized tokens) without adding a dependency.
+
+Styling itself follows a consistent pattern across every template in this
+skill — colocated `StyleSheet.create` at the bottom of the file, variant
+states composed via style arrays (`[styles.base, isActive && styles.active]`),
+`StyleProp<ViewStyle>`/`StyleProp<TextStyle>` on any reusable component's
+`style` prop. See `reference/STANDARD.md` §4b for the full pattern with
+examples, and for the criteria on when NativeWind is actually worth
+adopting over this default (it's a per-project choice, not a default).
 
 ### 15. Loading / empty / error state pattern
 
@@ -525,7 +555,38 @@ force-update gate (compares the installed version against a `min_version`
 fetched from the version-check endpoint) and a dismissable OTA-reload
 prompt (`Updates.useUpdates()`). Delete the OTA half if the app only wants
 the force-update gate without adopting EAS Update. See
-`reference/STANDARD.md` §11 for the full rationale.
+`reference/STANDARD.md` §12 for the full rationale.
+
+### Google Sign-In
+
+Only relevant once the app offers "Sign in with Google" as a login
+method. Copy `templates/src/hooks/useGoogleSignIn.ts` after
+`npx expo install @react-native-google-signin/google-signin`. This is
+purely a **credential-acquisition step**, not a backend replacement —
+the hook gets a Google ID token, POSTs it to this app's own
+`/auth/google` endpoint, and the session token that endpoint returns
+feeds into the same `useAuthStore.setSession()` every other login method
+uses. Swap the endpoint path/response shape for the app's real backend.
+
+Requires:
+- **A dev client or build, not Expo Go** — this is a native module.
+- An `app.json` config plugin entry:
+  ```json
+  { "plugins": [["@react-native-google-signin/google-signin", { "iosUrlScheme": "com.googleusercontent.apps.YOUR_IOS_CLIENT_ID" }]] }
+  ```
+  `iosUrlScheme` comes from the iOS OAuth client in Google Cloud Console
+  (reversed client ID format) — this is unrelated to Firebase, no
+  `GoogleService-Info.plist` needed for this pattern.
+- `GoogleSignin.configure({ webClientId: '...' })` called once at app
+  startup (e.g. in the root layout) — `webClientId` (the **Web**-type
+  OAuth client, not the iOS/Android one) is what makes `idToken` actually
+  come back non-null; skipping it is the most common way this silently
+  half-works.
+
+Call the hook's `signOutOfGoogle()` alongside `useAuthStore`'s
+`clearSession()` in the app's logout handler — clearing this app's own
+session doesn't sign the user out of Google, so skipping this means the
+next sign-in attempt silently re-authenticates as the same account.
 
 ### Push notification hook
 
@@ -538,6 +599,52 @@ requests permission, registers the Expo push token to the backend once
 listeners every push integration needs: tap-to-navigate (deep link via
 `router.push`) and foreground arrival. Treat it as a reference pattern to
 adapt, not a drop-in — the backend endpoint shape is app-specific.
+
+### Firebase Cloud Messaging (alternative to the push notification hook above)
+
+Only relevant once the app already uses Firebase directly (e.g. it
+adopted Crashlytics or the analytics wrapper) and wants richer native
+control than Expo's own push service — custom Android notification
+channels, data-only background messages. Don't set this up alongside the
+`expo-notifications` hook above; pick one push pattern, not both.
+
+Copy `templates/src/hooks/useFirebaseMessaging.ts` after
+`npx expo install @react-native-firebase/app @react-native-firebase/messaging @notifee/react-native`.
+Requires:
+- **A dev client or build, not Expo Go.**
+- `google-services.json` / `GoogleService-Info.plist` from the Firebase
+  console, referenced in `app.json`'s `android.googleServicesFile` /
+  `ios.googleServicesFile`, plus `plugins: ["@react-native-firebase/app"]`
+  and `["expo-build-properties", { "ios": { "useFrameworks": "dynamic" } }]`
+  (required for RN 0.75+'s Swift Package Manager setup). iOS also needs
+  `ios.infoPlist.UIBackgroundModes: ["remote-notification"]` and an
+  `aps-environment` entitlement.
+- **Permission request comes from `expo-notifications`, not from
+  `@react-native-firebase/messaging` itself** — `messaging()`'s own
+  `requestPermission()`/`hasPermission()` are deprecated (the library's
+  own docs say so). Reuse the permission-request half of
+  `usePushNotifications.ts` rather than duplicating it; this hook only
+  owns token retrieval and message handling.
+- A notification channel created once via Notifee
+  (`notifee.createChannel({ id: 'default', name: 'Default' })`) before
+  `notifee.displayNotification({...})` will show anything on Android 8+
+  — FCM data-only messages don't render a UI on their own, Notifee is
+  what actually displays them when the app is in the foreground.
+- `setBackgroundMessageHandler` must run before Expo Router boots, which
+  rules out `app/_layout.tsx` (that only loads *after* the router entry
+  point does). Copy `templates/index.js` — a custom entry file that runs
+  the handler registration then `import`s `expo-router/entry` **last**
+  (Expo Router's own docs: "always import it last to ensure all
+  configurations are properly set up before the app renders") — and
+  point `package.json`'s `"main"` field at it (`"main": "index.js"`
+  instead of the default `"main": "expo-router/entry"`). Delete
+  `index.js` and revert `"main"` if this pattern is ever removed.
+- Tap-to-navigate (opening a specific screen when the user taps a
+  Notifee-displayed notification) isn't included in
+  `useFirebaseMessaging.ts` — wire it via Notifee's own
+  `notifee.onForegroundEvent`/`onBackgroundEvent` once actually needed;
+  left out here rather than guessed, since the exact event-type
+  comparison wasn't verified as precisely as the rest of this pattern.
 
 ### In-app review prompt helper
 
@@ -598,8 +705,102 @@ Router's `usePathname()`; `TourOverlay` calls `router.push(...)` when the
 current pathname doesn't match the active step's resolved target screen —
 the tour drives navigation, not the other way around.
 
-See `reference/STANDARD.md` §12 for the full rationale (continuous
+See `reference/STANDARD.md` §13 for the full rationale (continuous
 measurement, spotlight geometry, why this stays opt-in).
+
+### End-to-end tests (Maestro)
+
+`reference/LIBRARIES.md` already names Maestro as the E2E pick — this
+gives it an actual starting flow instead of leaving it a bare
+recommendation, same treatment step 17 gave Jest for unit tests.
+
+Install the Maestro CLI (a standalone binary, not an npm dependency):
+
+```
+curl -Ls "https://get.maestro.mobile.dev" | bash
+export PATH="$PATH:$HOME/.maestro/bin"
+```
+
+Copy `templates/.maestro/onboarding-welcome.yaml` +
+`templates/.maestro/example-form.yaml` into `.maestro/` at the project
+root, and replace each flow's placeholder `appId` with the app's real
+`expo.android.package`/`expo.ios.bundleIdentifier`. Add
+`"e2e": "maestro test .maestro"` to `package.json` scripts. Delete/adapt
+`example-form.yaml` once the `example` feature itself is renamed (step
+16) — it asserts against a real backend endpoint (`POST /examples`), so
+it only passes once that endpoint (or the app's real equivalent) exists.
+
+**Requires a dev client or build, not Expo Go** — `launchApp` + `appId`
+don't work against Expo Go; build one first (`npx expo run:ios`/`run:android`,
+or an EAS dev-client/preview build) before flows can run. This is also
+why E2E isn't part of the core numbered scaffold — it needs a native
+build step first, unlike Jest which runs against plain JS.
+
+Flows select elements by visible text (`tapOn: "Mulai"`) where the text
+is stable, or by `testID` (`tapOn: { id: "example-submit-button" }`)
+where it isn't (e.g. once i18n makes labels vary by locale) —
+`templates/src/components/ui/Button.tsx` accepts an optional `testID`
+prop for this, and `FormField.tsx` already forwards `testID` through its
+spread `TextInputProps`. Add `testID` to a component the same way once
+copying this pattern to new screens.
+
+**CI**: don't run the full E2E suite on every PR — it's the most
+expensive, most flake-prone test layer, and a full run needs a fresh
+native build first. Run a small smoke subset (the two flows here, or
+however many cover the app's truly critical paths) on every PR, the full
+suite nightly or on merge to main. `mobile-dev-inc/action-maestro-cloud@v1`
+is the official GitHub Action if using Maestro Cloud's device farm;
+otherwise a self-hosted runner with the CLI installed against a local
+simulator/emulator works too.
+
+### Monorepo (multiple apps / shared packages)
+
+Only relevant once there's a genuine need for more than one app sharing
+code (e.g. a consumer app + an admin app sharing a design system and API
+client) — don't restructure a single-app project into a monorepo
+speculatively. The per-feature structure in steps 2/3 already scales
+fine within a single app; a monorepo solves a different problem
+(code shared *across* apps), not "this one app got big."
+
+- **Workspace tool**: `npm workspaces` — matches this boilerplate's
+  existing `npm install` convention, zero new tooling. pnpm is viable but
+  has a live caveat: its default isolated installs can break React
+  Native's autolinking with some native libraries; if pnpm is preferred
+  anyway, set `nodeLinker: hoisted` in `pnpm-workspace.yaml` to restore
+  flat/hoisted `node_modules` behavior.
+- **Metro config**: not needed manually on current Expo SDKs (52+) —
+  `expo/metro-config` resolves monorepo packages automatically now. If a
+  project has legacy `watchFolders` / `resolver.nodeModulesPath` /
+  `resolver.disableHierarchicalLookup` from older guidance, delete it and
+  run `npx expo start --clear` once.
+- **Folder structure**:
+  ```
+  my-monorepo/
+    apps/
+      mobile/          # this boilerplate's existing structure, unchanged
+      admin/           # a second Expo app, only if/when needed
+    packages/
+      ui/               # shared design-system primitives (Button, FormField, Screen, QueryState...)
+      api-client/       # shared Axios client + typed endpoints
+    package.json        # root: "workspaces": ["apps/*", "packages/*"]
+  ```
+  Everything already inside `apps/mobile/src/features/<feature>/` moves
+  unchanged — no restructuring inside an app. Only move something into
+  `packages/` once a *second* app genuinely needs it; don't hoist
+  speculatively. `useAuthStore` usually stays app-specific even across
+  apps hitting the same backend — each app typically owns its own
+  session lifecycle, so don't force it into a shared package without a
+  concrete cross-app session-sharing requirement.
+- **Turborepo/Nx**: don't add either by default. Plain npm workspace
+  scripts are enough for 2-3 apps and one team — reach for Turborepo once
+  repeated full-repo CI runs (re-typechecking/re-linting packages that
+  didn't change) are actually slow enough to justify a build cache, and
+  Nx only once its generators/affected-graph tooling are worth the extra
+  learning curve. Neither is a default; both are a "once it hurts" call,
+  same as the feature-folder-vs-flat threshold used to be before it
+  became mandatory.
+
+See `reference/STANDARD.md` §14 for the full rationale.
 
 ## iOS + Android
 
@@ -676,11 +877,17 @@ not already decided:
   (step 15), `templates/src/components/ui/FormField.tsx` (step 16),
   `templates/jest.config.js` + `templates/jest.setup.js` + `templates/src/store/useAppPreferencesStore.test.ts`
   + `templates/src/components/ui/Button.test.tsx` (step 17, testing
-  baseline), and the optional-pattern files under
+  baseline), `templates/eslint.config.js`'s `eslint-plugin-boundaries`
+  rule (step 9/§2d, feature-folder isolation enforcement), and the
+  optional-pattern files under
   `templates/src/components/ErrorBoundary.tsx`'s `onError` seam,
   `templates/src/utils/analytics.ts`, `templates/src/hooks/useDeepLinkRoute.ts`,
   `templates/src/components/ui/UpdateBanner.tsx`,
   `templates/src/hooks/usePushNotifications.ts`,
-  `templates/src/utils/requestAppReview.ts`, and
+  `templates/src/hooks/useGoogleSignIn.ts`,
+  `templates/src/hooks/useFirebaseMessaging.ts` + `templates/index.js`
+  (its required custom entry file),
+  `templates/src/utils/requestAppReview.ts`,
   `templates/src/components/Tour/` + `templates/src/constants/tourSteps.ts`
-  (product tour) — see "Optional patterns" for when to copy those in
+  (product tour), and `templates/.maestro/` (E2E flows) — see "Optional
+  patterns" for when to copy those in

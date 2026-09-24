@@ -8,6 +8,8 @@ export interface ButtonProps {
   disabled?: boolean;
   /** Overrides the screen-reader label if it should differ from the visible `label` text. */
   accessibilityLabel?: string;
+  /** For E2E selectors (Maestro/Detox) — prefer this over a text selector once labels vary by locale. */
+  testID?: string;
 }
 
 /**
@@ -18,7 +20,14 @@ export interface ButtonProps {
  * `ui/` components consistent with this rather than adding it as an
  * afterthought.
  */
-export const Button = ({ label, onPress, isLoading = false, disabled = false, accessibilityLabel }: ButtonProps) => {
+export const Button = ({
+  label,
+  onPress,
+  isLoading = false,
+  disabled = false,
+  accessibilityLabel,
+  testID,
+}: ButtonProps) => {
   const handlePress = useCallback(() => {
     if (isLoading || disabled) return;
     onPress();
@@ -32,6 +41,7 @@ export const Button = ({ label, onPress, isLoading = false, disabled = false, ac
       accessibilityLabel={accessibilityLabel ?? label}
       accessibilityState={{ disabled: disabled || isLoading, busy: isLoading }}
       hitSlop={8}
+      testID={testID}
       style={({ pressed }) => [styles.button, (disabled || isLoading) && styles.disabled, pressed && styles.pressed]}
     >
       {isLoading ? <ActivityIndicator color="#fff" /> : <Text style={styles.label}>{label}</Text>}

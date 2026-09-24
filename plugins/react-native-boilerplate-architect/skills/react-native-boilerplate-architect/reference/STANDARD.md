@@ -129,6 +129,34 @@ reserved convention file for any URL/deep link that doesn't match a
 route, styled with the app's own `Screen`/`Button`/`useTheme()` instead
 of the framework's unstyled default.
 
+### 2d. Enforcing feature isolation with ESLint
+
+§2b makes feature folders mandatory, but a folder *convention* alone
+doesn't stop a developer from reaching into another feature's internals
+under deadline pressure — exactly the point at which social conventions
+tend to erode. `templates/eslint.config.js` enforces it at lint time via
+`eslint-plugin-boundaries`'s `boundaries/dependencies` rule: a file
+inside `src/features/<feature>/` may import from its own feature or any
+shared layer folder (§2), but not from inside a *different* feature
+folder — that's a lint error, not a code-review nitpick someone has to
+remember to raise.
+
+The same-vs-different-feature comparison uses the rule's `captured`
+value (`{{ from.element.captured.feature }}`, interpolated from the
+`feature` element's `capture: ['feature']` pattern), not a hardcoded
+per-feature allow-list — the rule needs zero edits as features are added
+or removed, unlike a naive path-based restriction that would need one
+new entry per feature. `boundaries/dependencies` only governs
+dependencies *between the declared internal element types*
+(`feature`/`shared`/`app`); an unconfigured `boundaries/external` means
+node_modules imports are unaffected.
+
+Requires `eslint-import-resolver-typescript` alongside
+`eslint-plugin-boundaries` so the plugin can resolve the `@/*` → `./src/*`
+path alias when classifying an import target — without it, aliased
+imports don't get matched against `boundaries/elements`' patterns and the
+rule silently under-enforces.
+
 ## 3. Anti-conflict tooling — what each piece actually prevents
 
 - **Prettier (enforced via pre-commit, not just "please format your
@@ -157,7 +185,9 @@ of the framework's unstyled default.
   bypassed by an individual developer, which matters once more than one
   person can push.
 
-## 4. Theming & design tokens
+## 4. Theming & Styling
+
+### 4a. Design tokens
 
 Colors, spacing, and typography live in `/src/constants/theme.ts` as
 plain objects (light/dark palettes), read through a `useTheme()` hook
@@ -168,6 +198,54 @@ versus a grep-and-replace across every screen. See
 Don't add a full theming library (styled-components, a `ThemeProvider`
 from a UI kit) unless the project already pulls one in for other
 reasons — plain objects + a hook are enough for the actual requirement.
+
+### 4b. Styling patterns
+
+- **Colocation**: `StyleSheet.create({...})` at the bottom of the same
+  `.tsx` file as the component, not in a separate `.styles.ts`. A
+  component and its styles are one unit of change — splitting them means
+  every style tweak touches two files, which increases merge-conflict
+  surface for no benefit. Every template in this skill follows this
+  (`Button.tsx`, `OfflineBanner.tsx`, `FormField.tsx`...); don't introduce
+  a separate styles-file convention partway through a project.
+- **Variant/conditional styling via style arrays**, not template
+  literals or a `classnames`-style helper: `style={[styles.base,
+  isActive && styles.active, disabled && styles.disabled]}`.
+  `RN`'s `StyleSheet` flattens an array at render time and falsy entries
+  are simply skipped, so this composes cleanly without a library. See
+  `templates/src/components/ui/Button.tsx` (`pressed && styles.pressed`)
+  and `templates/src/components/ui/FormField.tsx` (`error ? colors.danger
+  : colors.border`) for the pattern in practice — one static `styles.x`
+  per visual state, composed at the call site, not a giant conditional
+  object built inline.
+- **Type style props as `StyleProp<ViewStyle>` / `StyleProp<TextStyle>`**
+  (not `ViewStyle` alone) on any reusable component that accepts a
+  `style` override — `StyleProp` is what allows the caller to pass an
+  array (`[styles.card, customStyle]`), not just a single object. See
+  `templates/src/components/ui/Screen.tsx`'s `style?: ViewStyle` for a
+  case where a single object is deliberately enough (it's an internal
+  merge point, not exposed for external array composition) versus a
+  component meant to be styled from outside, which should widen to
+  `StyleProp`.
+- **Don't build a style object inline inside `renderItem`** (or any
+  per-item render function) — a fresh object every render defeats
+  `StyleSheet.create`'s one-time-registration optimization and creates
+  unnecessary props diffing. Reference static `styles.x` from a
+  `StyleSheet.create` call declared outside the render function, same
+  rule as "no inline function in `renderItem`" already covers for
+  callbacks.
+- **`NativeWind`/Tailwind is a per-project choice, not a default** — this
+  skill's own templates use plain `StyleSheet.create` + theme tokens
+  throughout, and that's sufficient for most PT PSM apps. Reach for
+  NativeWind specifically when: the team already writes Tailwind daily on
+  a companion web app and wants one mental model across both, or the app
+  leans heavily on utility-class-style rapid layout iteration (lots of
+  one-off spacing/flex tweaks) where `StyleSheet.create` boilerplate
+  genuinely slows iteration down. Don't adopt it just because it's
+  popular — once adopted, apply it consistently across the whole app
+  (mixing `StyleSheet.create` and `className` per-screen is worse than
+  either alone, since a reviewer can no longer assume one styling
+  mental model app-wide).
 
 ## 5. UI/UX & error handling
 
@@ -348,10 +426,80 @@ the start and are expensive to retrofit later:
 `Button.tsx`, `PermissionPrimer.tsx`, and `OfflineBanner.tsx` already carry
 these baseline props — keep new custom components added to `/src/components/ui`
 consistent with them rather than treating accessibility as a separate pass
-at the end. See §10's audit checklist for what to flag when auditing an
+at the end. See §11's audit checklist for what to flag when auditing an
 existing project against this section.
 
-## 10. Auditing an existing project against this standard
+## 10. Performance
+
+### 10a. Measure before optimizing — the rule this section leads with
+
+Don't suggest memoization (`useMemo`/`useCallback`/`React.memo`), a
+re-render fix, or any other performance change speculatively — only after
+profiling has actually located the specific component/render causing a
+reported problem. Concretely, don't:
+- Wrap a component in `React.memo` or a value in `useMemo` "just in case"
+  when nothing has been measured. Every `useMemo`/`useCallback` has a cost
+  too (a dependency-array comparison every render) — for a cheap
+  computation or a component that rarely re-renders, the "optimization"
+  can net slower, not faster, while definitely adding complexity for a
+  problem that doesn't exist yet.
+- Treat component tree depth, prop-drilling depth, or "this looks
+  expensive" as performance evidence on its own. None of these correlate
+  reliably with an actual dropped frame or slow interaction.
+- Recommend a broad change (adopting the React Compiler, restructuring
+  state, splitting a context) in response to a vague "app terasa
+  lambat" report — first reproduce it, then profile, then fix the
+  specific thing the profile points at.
+
+The actual workflow when a real performance complaint comes in: **measure
+→ fix the one thing the measurement points at → re-measure → confirm the
+fix actually helped** before moving to the next thing. React DevTools'
+Profiler tab (or Flipper's React DevTools plugin) is the first tool to
+reach for — it shows which component actually re-rendered and why, which
+is almost always more specific and more correct than guessing from
+reading the component tree.
+
+### 10b. Native-level profiling (rare, for Expo-managed apps)
+
+Xcode Instruments (Time Profiler, Allocations) and Android Studio's
+Profiler are for once JS-level profiling has already ruled out a JS-side
+cause and the suspicion is native — this should be uncommon for an
+Expo-managed app that isn't shipping custom native modules. Don't reach
+for native-level profiling first; it's a much higher-effort tool for a
+narrower class of problem than most reported slowness turns out to be.
+
+### 10c. Bundle size
+
+The barrel-import ban (§3) has a second justification beyond merge
+conflicts: a barrel file (`index.ts` re-exporting a whole folder) also
+defeats tree-shaking, since a bundler can't always statically prove which
+re-exported members a given import site actually uses, and ends up
+including more of the folder than necessary. Importing directly from the
+source file avoids this in addition to the conflict-surface reason
+already given.
+
+Apply the same measure-first principle to bundle size specifically —
+don't guess what's bloating the bundle. Run `npx expo export` then
+inspect the output with `source-map-explorer` (or
+`react-native-bundle-visualizer`) to see actual composition before
+removing/replacing a dependency on suspicion alone.
+
+### 10d. React Compiler & concurrent React
+
+The React Compiler (stable with React 19 / enabled via
+`experiments.reactCompiler` in `app.json` on Expo SDK versions that
+support it) auto-memoizes components and values, which reduces how often
+manual `useMemo`/`useCallback` is actually needed. Check whether the
+project's Expo SDK/React version already has it enabled before manually
+optimizing re-renders component-by-component — it may already be handled.
+
+For keeping input responsive during an expensive re-render (e.g.
+filtering a long list while the user is still typing in a search field),
+`useTransition`/`useDeferredValue` are the current, built-in alternative
+to hand-rolling a debounce — reach for these before adding a debounce
+utility dependency for this specific case.
+
+## 11. Auditing an existing project against this standard
 
 When asked to audit, check for (and report as gaps, don't silently fix
 without confirming):
@@ -384,6 +532,9 @@ without confirming):
     instead of `/src/features/<feature>/`? Per §2/§2b this is the default
     from day one now, not an app-size-dependent upgrade — flag it as a
     gap regardless of how small the app is, not just as a suggestion.
+    Also check for `eslint-plugin-boundaries` (§2d) — is it actually
+    installed and configured, or does the feature-folder convention rely
+    entirely on developers remembering not to cross-import?
 14. Does the app hold the splash screen until app-ready state (e.g.
     persisted-store hydration) instead of hiding it on a fixed timer or
     immediately on mount? Is there a welcome/onboarding flow at all for
@@ -402,8 +553,15 @@ without confirming):
 17. Any icon-only touchable missing an `accessibilityLabel`? Any touch
     target visually or actually under 44×44? Any `allowFontScaling={false}`
     without a specific justification comment? (See §9.)
+18. Any `useMemo`/`useCallback`/`React.memo` in the codebase with no
+    comment or evidence tying it to an actual measured problem? Per §10,
+    flag speculative memoization the same way an unjustified premature
+    abstraction would be flagged — it's added complexity, not a free win.
+    Has bundle size ever actually been inspected (`source-map-explorer`
+    or similar), or is "the bundle is probably fine" an assumption nobody
+    has checked?
 
-## 11. Force update & OTA updates (EAS Update apps only) — optional
+## 12. Force update & OTA updates (EAS Update apps only) — optional
 
 Only relevant once an app actually uses EAS Update — see `SKILL.md`'s
 "Optional patterns" section for when to add it, and the "iOS + Android"
@@ -430,7 +588,7 @@ section below for the EAS Build/Update decision itself.
   foreground, so a force-update pushed while the app was backgrounded is
   caught without requiring a full relaunch.
 
-## 12. Product tour (spotlight coach-marks) — optional
+## 13. Product tour (spotlight coach-marks) — optional
 
 Unlike splash/onboarding/auth (§6/§7), a guided in-app tour that
 spotlights real UI elements is an opt-in pattern, not part of the default
@@ -480,3 +638,52 @@ Colors, spacing, and copy in the tour overlay pull from `useTheme()` and
 plain string constants (`templates/src/constants/tourSteps.ts`) — same
 theming approach as everywhere else in this boilerplate (§4), not a
 separate one-off styling system.
+
+## 14. Monorepo (multiple apps / shared packages) — optional
+
+Solves a different problem than the feature-folder structure in §2b —
+that's about organizing code *within* one app; a monorepo is about
+sharing code *across* more than one app. Don't reach for this until
+there's a genuine second app (or package consumer) — a single growing
+app stays inside its own repo with the feature-folder structure, no
+matter how large it gets.
+
+- **Workspace tool: npm workspaces**, not pnpm/Yarn/a dedicated
+  task-runner, by default — this boilerplate is already an `npm install`
+  shop, and workspaces need zero additional tooling beyond what's already
+  there. pnpm's default isolated-install strategy (strict, non-hoisted
+  `node_modules` via symlinks) has a live, currently-unresolved friction
+  point with some React Native libraries' autolinking, which expects a
+  flatter `node_modules` shape; `nodeLinker: hoisted` in
+  `pnpm-workspace.yaml` is the workaround if a team prefers pnpm anyway
+  for other reasons.
+- **Metro no longer needs manual monorepo config** on current Expo SDKs
+  (52+) — this used to require hand-editing `metro.config.js` with
+  `watchFolders`/`nodeModulesPaths`/`disableHierarchicalLookup` to make
+  Metro resolve packages hoisted to the workspace root; `expo/metro-config`
+  now does this automatically. Treat any of those three options found in
+  an existing project's `metro.config.js` as legacy cruft to remove, not
+  a pattern to copy into a new one.
+- **Structure**: `apps/<app-name>/` per Expo app (this boilerplate's
+  existing steps 1-18 scaffold each one, unchanged), `packages/<name>/`
+  per genuinely-shared package. The bar for moving something into
+  `packages/` is a *second* real consumer, not "this might be reused
+  someday" — the same anti-speculation principle that governs everything
+  else in this standard (LIBRARIES.md's "don't install/add anything
+  speculatively," feature folders not migrating preemptively, etc.)
+  applies here too. `useAuthStore` is the common case worth calling out
+  explicitly: even across two apps hitting the same backend, each app
+  usually has its own session lifecycle (a consumer app and an internal
+  admin tool don't typically share a login session), so it stays
+  app-local unless there's a concrete reason two apps need to share one
+  session.
+- **Turborepo/Nx are a "once it hurts" upgrade, not a default** — for a
+  small number of apps and one team, plain `npm run` scripts across
+  workspaces (invoked directly, or via a root script that loops over
+  `apps/*`) are enough. Turborepo earns its keep once CI is repeatedly
+  re-typechecking/re-linting/re-testing packages that didn't change on a
+  given PR and the wasted time is actually noticeable — its build cache
+  and task graph solve exactly that. Nx is a bigger step (generators,
+  a deeper affected-graph model) worth it only once a team wants that
+  machinery specifically, not as a default "more tooling is more
+  professional" choice.

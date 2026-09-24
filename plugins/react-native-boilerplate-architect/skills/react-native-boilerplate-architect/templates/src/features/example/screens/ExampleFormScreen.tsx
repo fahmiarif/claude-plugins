@@ -36,8 +36,19 @@ export const ExampleFormScreen = () => {
 
   return (
     <View style={styles.container}>
-      <FormField control={control} name="title" label="Judul" placeholder="Judul" />
-      <Button label="Simpan" onPress={onSubmit} isLoading={createItem.isPending} />
+      <FormField
+        control={control}
+        name="title"
+        label="Judul"
+        placeholder="Judul"
+        testID="example-title-input"
+      />
+      <Button
+        label="Simpan"
+        onPress={onSubmit}
+        isLoading={createItem.isPending}
+        testID="example-submit-button"
+      />
     </View>
   );
 };

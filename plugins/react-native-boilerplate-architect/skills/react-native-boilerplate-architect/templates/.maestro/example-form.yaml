@@ -1,0 +1,12 @@
+# See onboarding-welcome.yaml for the appId/dev-client note.
+appId: com.yourorg.yourapp
+---
+- launchApp
+- tapOn:
+    id: "example-title-input"
+- inputText: "Contoh item"
+- tapOn:
+    id: "example-submit-button"
+# The form resets on a successful mutation (see ExampleFormScreen.tsx's
+# onSuccess) — the typed text disappearing is the proxy for "submitted".
+- assertNotVisible: "Contoh item"

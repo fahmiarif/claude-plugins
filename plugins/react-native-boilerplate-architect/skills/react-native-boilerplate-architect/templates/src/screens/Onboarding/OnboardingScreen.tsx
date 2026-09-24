@@ -11,7 +11,7 @@ import Animated, {
 
 import { Button } from '@/components/ui/Button';
 import { Screen } from '@/components/ui/Screen';
-import { OnboardingSlide, ONBOARDING_SLIDES } from '@/constants/onboardingSlides';
+import { ONBOARDING_SLIDES, OnboardingSlide } from '@/constants/onboardingSlides';
 import { useTheme } from '@/hooks/useTheme';
 import { useAppPreferencesStore } from '@/store/useAppPreferencesStore';
 
