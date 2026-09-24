@@ -28,10 +28,18 @@ Trigger it by asking Claude Code things like:
 
 ## Updating
 
-After pushing changes to a plugin, bump its `version` in both
-`plugins/<plugin>/.claude-plugin/plugin.json` and the matching entry in
-`.claude-plugin/marketplace.json` — installed users only get the update
-once the version string changes.
+`react-native-boilerplate-architect` is sourced directly from its own
+repo (github: `fahmiarif/react-native-boilerplate-architect`, tracked at
+`ref: main`) — there's no embedded copy in this repo to keep in sync.
+Push changes there and bump `version` in that repo's
+`.claude-plugin/plugin.json`; update this repo's
+`.claude-plugin/marketplace.json` `version` field to match so it doesn't
+drift out of sync as a stale label.
+
+For any future plugin that lives locally in `plugins/<plugin>/` instead,
+bump its `version` in both `plugins/<plugin>/.claude-plugin/plugin.json`
+and the matching entry in `.claude-plugin/marketplace.json` — installed
+users only get the update once the version string changes.
 
 Users pull updates with:
 

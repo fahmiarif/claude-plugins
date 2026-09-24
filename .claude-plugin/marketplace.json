@@ -6,9 +6,13 @@
   "plugins": [
     {
       "name": "react-native-boilerplate-architect",
-      "source": "./plugins/react-native-boilerplate-architect",
+      "source": {
+        "source": "github",
+        "repo": "fahmiarif/react-native-boilerplate-architect",
+        "ref": "main"
+      },
       "description": "Scaffolds and enforces PT PSM's production-grade React Native (Expo) boilerplate and team anti-conflict tooling.",
-      "version": "1.10.0"
+      "version": "1.12.0"
     }
   ]
 }
